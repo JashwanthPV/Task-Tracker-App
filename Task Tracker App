@@ -1,0 +1,153 @@
+Steps to Build the Task Tracker App
+
+
+Step 1: Set up the Project
+Create a new project:
+bash:-
+
+django-admin startproject task_project
+cd task_project
+
+Create an app:
+bash:-
+
+python manage.py startapp tracker
+Add 'tracker' to INSTALLED_APPS.
+
+Step 2: Create the Task Model
+Edit tracker/models.py:
+python:-
+
+from django.db import models
+
+class Task(models.Model):
+    name = models.CharField(max_length=200)
+    due_date = models.DateField()
+    completed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.name
+
+Run migrations:
+bash:-
+
+python manage.py makemigrations
+python manage.py migrate
+
+Step 3: Create Views
+Edit tracker/views.py:
+python:-
+
+from django.shortcuts import render, redirect
+from .models import Task
+
+def task_list(request):
+    tasks = Task.objects.filter(completed=False)
+    return render(request, 'tracker/task_list.html', {'tasks': tasks})
+
+def add_task(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        due_date = request.POST.get('due_date')
+        Task.objects.create(name=name, due_date=due_date)
+        return redirect('/')
+    return render(request, 'tracker/add_task.html')
+
+def complete_task(request, task_id):
+    task = Task.objects.get(id=task_id)
+    task.completed = True
+    task.save()
+    return redirect('/')
+
+def completed_tasks(request):
+    tasks = Task.objects.filter(completed=True)
+    return render(request, 'tracker/completed_tasks.html', {'tasks': tasks})
+
+Step 4: Create URLs
+Create tracker/urls.py:
+python:-
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.task_list, name='task_list'),
+    path('add/', views.add_task, name='add_task'),
+    path('complete/<int:task_id>/', views.complete_task, name='complete_task'),
+    path('completed/', views.completed_tasks, name='completed_tasks'),
+]
+
+Include these in the project’s urls.py:
+python:-
+
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('tracker.urls')),
+]
+
+Step 5: Create Templates
+Create templates/tracker/task_list.html:
+html:-
+
+<!DOCTYPE html>
+<html>
+<head><title>Task Tracker</title></head>
+<body>
+    <h1>Pending Tasks</h1>
+    <a href="{% url 'add_task' %}">Add Task</a>
+    <ul>
+        {% for task in tasks %}
+        <li>
+            {{ task.name }} (Due: {{ task.due_date }})
+            <a href="{% url 'complete_task' task.id %}">Mark as Completed</a>
+        </li>
+        {% endfor %}
+    </ul>
+    <a href="{% url 'completed_tasks' %}">View Completed Tasks</a>
+</body>
+</html>
+
+
+Create add_task.html:
+html:-
+
+<!DOCTYPE html>
+<html>
+<head><title>Add Task</title></head>
+<body>
+    <h1>Add a New Task</h1>
+    <form method="post">
+        {% csrf_token %}
+        <input type="text" name="name" placeholder="Task Name" required><br>
+        <input type="date" name="due_date" required><br>
+        <button type="submit">Add Task</button>
+    </form>
+</body>
+</html>
+
+Create completed_tasks.html:
+html:-
+
+<!DOCTYPE html>
+<html>
+<head><title>Completed Tasks</title></head>
+<body>
+    <h1>Completed Tasks</h1>
+    <ul>
+        {% for task in tasks %}
+        <li>{{ task.name }} (Completed on: {{ task.due_date }})</li>
+        {% endfor %}
+    </ul>
+    <a href="/">Back to Pending Tasks</a>
+</body>
+</html>
+
+Step 6: Run the Server
+Start the server:
+bash:-
+
+python manage.py runserver
+Open http://127.0.0.1:8000/.
